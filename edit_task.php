@@ -1,18 +1,15 @@
 <?php
 require_once 'config.php';
 
-// Vérifier si l'ID de la tâche est passé dans l'URL
 if (isset($_GET['id']) && !empty($_GET['id'])) {
     $taskId = $_GET['id'];
 
-    // Récupérer la tâche à modifier
     $sql = "SELECT id, title, category, description FROM tasks WHERE id = :id";
     $stmt = $pdo->prepare($sql);
     $stmt->bindParam(':id', $taskId, PDO::PARAM_INT);
     $stmt->execute();
     $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Vérifier si la tâche existe
     if (!$task) {
         echo "Tâche introuvable.";
         exit;
@@ -22,28 +19,24 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     exit;
 }
 
-// Traiter la soumission du formulaire de modification
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Récupérer les données du formulaire
+
     $task_name = $_POST['taskName'];
     $task_description = $_POST['taskDescription'];
     $task_category = $_POST['taskCategory'];
 
-    // Vérifier que les champs sont remplis
     if (!empty($task_name) && !empty($task_description) && !empty($task_category)) {
-        // Mettre à jour la tâche
+
         $sql = "UPDATE tasks SET title = :title, description = :description, category = :category WHERE id = :id";
         $stmt = $pdo->prepare($sql);
 
-        // Lier les paramètres
         $stmt->bindParam(':title', $task_name);
         $stmt->bindParam(':description', $task_description);
         $stmt->bindParam(':category', $task_category);
         $stmt->bindParam(':id', $taskId, PDO::PARAM_INT);
 
-        // Exécuter la requête
         if ($stmt->execute()) {
-            header("Location: task_list.php");
+            header("Location: tasks_list.php");
             exit;
         } else {
             echo "Erreur lors de la modification de la tâche.";
@@ -69,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="card shadow-lg p-4">
             <h2 class="text-center text-primary mb-4">Modifier la Tâche</h2>
 
-            <!-- Formulaire de modification -->
             <form method="POST" action="">
                 <div class="mb-3">
                     <label for="taskName" class="form-label">Nom de la tâche</label>
@@ -90,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </form>
 
             <div class="text-center mt-3">
-                <a href="task_list.php" class="btn btn-secondary">Retour à la liste des tâches</a>
+                <a href="tasks_list.php" class="btn btn-secondary">Retour à la liste des tâches</a>
             </div>
         </div>
     </div>

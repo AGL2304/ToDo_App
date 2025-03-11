@@ -1,10 +1,9 @@
 <?php
 require_once 'config.php';
 
-// Récupérer les tâches depuis la base de données
-$sql = "SELECT id, title, category, description FROM tasks"; // Requête mise à jour
-$stmt = $pdo->query($sql); // Exécuter la requête
-$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC); // Récupérer toutes les tâches sous forme de tableau associatif
+$sql = "SELECT id, title, category, description FROM tasks";
+$stmt = $pdo->query($sql);
+$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -35,15 +34,18 @@ $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC); // Récupérer toutes les tâches so
                     </thead>
                     <tbody id="taskTableBody">
                         <?php
-                        // Vérifier s'il y a des tâches et les afficher
+                        
                         if ($tasks) {
                             foreach ($tasks as $task) {
                                 echo "<tr>
-                                        <td>" . htmlspecialchars($task['id']) . "</td>
-                                        <td>" . htmlspecialchars($task['title']) . "</td>
-                                        <td>" . htmlspecialchars($task['category']) . "</td>
-                                        <td>" . htmlspecialchars($task['description']) . "</td>
+                                        <td>" . htmlspecialchars($task['id'] ?? '') . "</td>
+                                        <td>" . htmlspecialchars($task['title'] ?? '') . "</td>
+                                        <td>" . htmlspecialchars($task['category'] ?? '') . "</td>
+                                        <td>" . htmlspecialchars($task['description'] ?? '') . "</td>
                                         <td>
+                                            <a href='Details_task.php?id=" . $task['id'] . "' class='btn btn-info btn-sm'>
+                                                <i class='fas fa-eye'></i> Voir
+                                            </a>
                                             <a href='edit_task.php?id=" . $task['id'] . "' class='btn btn-warning btn-sm'>
                                                 <i class='fas fa-edit'></i> Modifier
                                             </a>
@@ -62,7 +64,7 @@ $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC); // Récupérer toutes les tâches so
             </div>
         </div>
         <div class="mt-3 text-center">
-            <a href="index.php" class="btn btn-secondary">Retour à l'ajout de nouvelle tâche</a>
+            <a href="insert_task.php" class="btn btn-secondary">Retour à l'ajout de nouvelle tâche</a>
         </div>
     </div>
 

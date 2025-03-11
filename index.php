@@ -1,75 +1,113 @@
 <?php
+ob_start(); // Démarre la mise en tampon de sortie
 require_once 'config.php';
 
-// Vérifier si les données du formulaire sont soumises
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Récupérer les données du formulaire
-    $task_name = $_POST['taskName'];
-    $task_category = $_POST['taskCategory'];
-    $task_description = $_POST['taskDescription'];
+$URL = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
 
-    // Vérifier que tous les champs sont remplis
-    if (!empty($task_name) && !empty($task_description) && !empty($task_category)) {
-        try {
-            // Insérer la tâche avec la catégorie directement
-            $sql_task = "INSERT INTO tasks (title, category, description) VALUES (:title, :category, :description)";
-            $stmt_task = $pdo->prepare($sql_task);
-            $stmt_task->bindParam(':title', $task_name);
-            $stmt_task->bindParam(':category', $task_category);
-            $stmt_task->bindParam(':description', $task_description);
+// Récupérer la méthode, le chemin et les paramètres
+$METHODE = $_SERVER['REQUEST_METHOD'];
+$CHEMIN = $URL[0] ?? null;
+$PARAMETRE = $URL[1] ?? null;
 
-            // Exécuter la requête d'insertion
-            if ($stmt_task->execute()) {
-                // Rediriger vers la page des tâches après l'ajout
-                header("Location: task_list.php");
-                exit;
+header('Content-Type: application/json');
+
+// Vérifier si la ressource demandée est "task"
+if ($CHEMIN === "task" || ($METHODE === 'POST' && str_contains($CHEMIN, "task"))) {
+    if ($METHODE === 'GET') {
+        if ($PARAMETRE === null) {
+            // Récupération de toutes les tâches
+            $sql = "SELECT id, description FROM tasks";
+            $stmt = $pdo->query($sql);
+            $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            echo json_encode($tasks, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            exit;
+        } elseif (filter_var($PARAMETRE, FILTER_VALIDATE_INT)) {
+            // Récupération de la tâche spécifique par l'ID
+            $sql = "SELECT id, description FROM tasks WHERE id = :id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['id' => $PARAMETRE]);
+            $task = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($task) {
+                echo json_encode($task, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             } else {
-                throw new Exception("Erreur lors de l'ajout de la tâche.");
+                http_response_code(404);
+                echo json_encode(["error" => "Task not found"]);
             }
-        } catch (Exception $e) {
-            echo "Erreur: " . $e->getMessage();
+            exit;
+        } else {
+            http_response_code(400);
+            echo json_encode(["error" => "Invalid task ID"]);
+            exit;
         }
-    } else {
-        echo "Veuillez remplir tous les champs.";
     }
+    elseif ($METHODE === 'POST') {
+        $PARAMETRE = explode('=',explode('?',$CHEMIN)[1]);
+        try {
+            $sql = 'INSERT INTO tasks(description) VALUE(:description)';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['description' => $PARAMETRE[1]]);            
+        
+            if ($stmt->rowCount() > 0) {
+
+                $sql = "SELECT id, description FROM tasks order by id desc LIMIT 1";
+                $stmt = $pdo->query($sql);
+                $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                if ($tasks) {
+                    // Définir l'en-tête Location avec l'ID de la tâche créée
+                    header("Location: http://localhost/task/".$tasks[0]['id']);
+
+                    echo json_encode($tasks, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                    http_response_code(200);
+                } else {
+                    http_response_code(404);
+                    echo json_encode(["error" => "Task not found"]);
+                }
+                return;
+            } else {
+                $response = ["status" => "warning", "message" => "Task not found or already deleted"];
+                echo json_encode($response, flags: JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        } catch (PDOException $e) {
+            $response = ["status" => "error", "message" => "Database error: " . $e->getMessage()];
+            echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            return;
+        }
+    }
+    elseif($METHODE === 'DELETE')
+    {
+        try {
+            $sql = "DELETE FROM tasks WHERE id = :id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['id' => $PARAMETRE]);
+        
+            if ($stmt->rowCount() > 0) {
+                http_response_code(200);
+                return;
+            } else {
+                $response = ["status" => "warning", "message" => "Task not found or already deleted"];
+                echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        } catch (PDOException $e) {
+            $response = ["status" => "error", "message" => "Database error: " . $e->getMessage()];
+            echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        
+    }
+    else {
+        http_response_code(405);
+        echo json_encode(["error" => "Method Not Allowed"]);
+        exit;
+    }
+    
+} else {
+    http_response_code(404);
+    echo json_encode(["error" => "Resource not found"]);
+    exit;
 }
-?>
-
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <script src="assets/js/script.js" defer></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <title>To do List - App</title>
-</head>
-<body>
-    <?php include_once 'header.php'; ?>
-
-    <div class="container mt-5">
-        <div class="card shadow-lg p-4">
-            <h2 class="text-center text-primary mb-4">To-Do List</h2>
-
-            <!-- Formulaire pour ajouter une tâche -->
-            <form method="POST" action="">
-                <div class="mb-3">
-                    <input type="text" name="taskName" class="form-control mb-2" placeholder="Nom de la tâche" required>
-                    <input type="text" name="taskCategory" class="form-control mb-2" placeholder="Catégorie de la tâche" required>
-                    <textarea name="taskDescription" class="form-control mb-2" rows="2" placeholder="Description de la tâche" required></textarea>
-                    <button type="submit" class="btn btn-primary w-100">Ajouter</button>
-                </div>
-            </form>
-
-            <div class="text-center mt-3">
-                <a href="task_list.php" class="btn btn-info">Voir toutes les tâches</a>
-            </div>
-        </div>
-    </div>
-
-    <?php include_once 'footer.php'; ?>
-</body>
-</html>
+ob_end_flush(); // Envoie la sortie tamponnée au navigateur

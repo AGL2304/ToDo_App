@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  todo-app:
+    build: .
+    container_name: todo-container
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql-db
+    environment:
+      - DATABASE_HOST=mysql-db
+      - DATABASE_USER=root
+      - DATABASE_PASSWORD=SecurePassword
+      - DATABASE_NAME=todo_app
+    volumes:
+      - ./ToDo_App:/var/www/html
+    user: "www-data"
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: SecurePassword
+      MYSQL_DATABASE: todo_app
+      MYSQL_USER: todo_user
+      MYSQL_PASSWORD: SecurePassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d 
+    user: "999:999" 
+
+volumes:
+  mysql_data:
+
